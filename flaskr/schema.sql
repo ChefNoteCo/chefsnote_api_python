@@ -27,3 +27,11 @@ CREATE TABLE recipes (
   cookTime INTEGER NOT NULL DEFAULT 0,
   servings INTEGER NOT NULL DEFAULT 0
 );
+
+CREATE TABLE ingredient (
+  id TEXT PRIMARY KEY
+  userID INTEGER,
+  name TEXT NOT NULL,
+  unit TEXT DEFAULT 'g',
+  quantity INTEGER NOT NULL DEFAULT 0
+)
