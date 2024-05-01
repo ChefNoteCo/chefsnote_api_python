@@ -29,7 +29,7 @@ CREATE TABLE recipes (
 );
 
 CREATE TABLE ingredient (
-  id TEXT PRIMARY KEY
+  id TEXT PRIMARY KEY,
   userID INTEGER,
   name TEXT NOT NULL,
   unit TEXT DEFAULT 'g',
