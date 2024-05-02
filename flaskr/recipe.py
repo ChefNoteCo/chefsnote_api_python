@@ -1,8 +1,7 @@
 import uuid
 from datetime import date
-from flask import jsonify
 from flask import (
-    Blueprint, flash, g, redirect, render_template, request, session, url_for
+    Blueprint, flash, g, redirect, render_template, request, jsonify, session, url_for
 )
 from flaskr.db import get_db
 import logging
@@ -16,51 +15,29 @@ logger = logging.getLogger(__name__)
 bp = Blueprint('recipe', __name__, url_prefix='/recipe')
 
 # Define route to handle form submission
-@bp.route('/record', methods=('GET', 'POST'))
+@bp.route('/record', methods=('POST',))
 def record():
-    if request.method == "POST":
-        # Retrieve form data
-        recipeName = request.form['recipeName']
-        prepTime = request.form['prepTime']
-        cookTime = request.form['cookTime']
-        servings = request.form['servings']
-        feedbackNotes = request.form['feedback']
-        prepNotes = request.form['prepNotes']
-        instruction = request.form['instruction']
+    data = request.json
 
-        # Generate unique ID for each recipe, version control using date creation
-        unique_id = str(uuid.uuid4())
-        version = unique_id + "#" + str(date.today())
+    recipeName = data.get('recipeName')
+    prepTime = data.get('prepTime')
+    cookTime = data.get('cookTime')
+    servings = data.get('servings')
+    feedbackNotes = data.get('feedbackNotes')
+    prepNotes = data.get('prepNotes')
+    instruction = data.get('instruction')
 
-        # Log form data
-        logger.info(f"Form Data - ID: {unique_id}, Recipe Name: {recipeName}, Prep Time: {prepTime}, Cook Time: {cookTime}, Servings: {servings}")
-        error = None
-
-        # Validate form data
-        if not recipeName:
-            error = 'Recipe Name is required.'
-        elif not prepTime:
-            error = 'Prep Time is required.'
-        elif not cookTime:
-            error = 'Cook Time is required.'
-        elif not servings:
-            error = 'Number of servings is required.'
-
-        # If no validation errors, insert record into database
-        if error is not None:
-            flash(error)
-        else:
-            db = get_db()
-            db.execute(
-                "INSERT INTO recipes (id, parent_id, child_id, name, prepTime, cookTime, servings) VALUES (?, ?, ?, ?, ?, ?)",
-                (unique_id, version, recipeName, prepTime, cookTime, servings),
+    recipeVersionID = str(uuid.uuid4()) + "#" + str(date.today())
+    
+    logger.info(f"Data - ID: {recipeVersionID}, Recipe Name: {recipeName}, Prep Time: {prepTime}, Cook Time: {cookTime}, Servings: {servings}")
+    
+    db = get_db()
+    db.execute(
+        "INSERT INTO recipes (id, parent_id, child_id, recipe_name, prepTime, cookTime, servings, feedback_notes, prep_notes, instruction) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",(recipeVersionID, recipeVersionID, recipeVersionID, recipeName, prepTime, cookTime, servings, feedbackNotes, prepNotes, instruction),
             )
-            db.commit()
-            flash('Recipe added successfully.')
-            return redirect(url_for('recipe.record'))
-        
-    # Render the form template for GET requests and POST requests with errors
-    return render_template('recipe/recipe_record.html')
+    db.commit()
+   
+    return jsonify({'message': 'Recipe added successfully'}), 201
 
 @bp.route('/allrecipes', methods=('GET',)) 
 def all_recipes():
@@ -72,12 +49,14 @@ def all_recipes():
     for recipe in recipes:
         recipe_json.append({
             'id': recipe['id'],
-            'version':recipe['version'],
-            'name': recipe['name'],
+            'parentId': recipe['parent_id'],
+            'name': recipe['recipe_name'],
             'prepTime': recipe['prepTime'],
             'cookTime': recipe['cookTime'],
             'servings': recipe['servings'],
-            # Add other fields as needed
+            'servings': recipe['feedback_notes'],
+            'prepNote': recipe['prep_notes'],
+            'instruction': recipe['instruction'],
         })
     
     # Return the list of recipes as JSON
