@@ -20,14 +20,25 @@ CREATE TABLE post (
 
 CREATE TABLE recipes (
   id TEXT PRIMARY KEY,
+  parent_id INTEGER NOT NULL,
+  child_id INTEGER NOT NULL,
   version INTEGER NOT NULL,
-  latest TEXT NOT NULL DEFAULT 'TRUE',
   name TEXT NOT NULL DEFAULT 'UNNAMED',
   prepTime INTEGER NOT NULL DEFAULT 0,
   cookTime INTEGER NOT NULL DEFAULT 0,
-  servings INTEGER NOT NULL DEFAULT 0
+  servings INTEGER NOT NULL DEFAULT 0,
+  feedback_notes jsonb,
+  prep_notes jsonb,
+  instruction jsonb
 );
 
+create TABLE recipes_ingredients {
+  id TEXT PRIMARY KEY,
+  external_id INTEGER
+  user_id TEXT 
+  ingredient_id TEXT
+  measurement INTEGER DEFAULT 0
+}
 CREATE TABLE ingredient (
   id TEXT PRIMARY KEY,
   userID INTEGER,
