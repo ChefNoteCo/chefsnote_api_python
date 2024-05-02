@@ -18,7 +18,6 @@ bp = Blueprint('recipe', __name__, url_prefix='/recipe')
 
 # Define route to handle form submission
 @bp.route('/record', methods=('GET', 'POST'))
-@login_required
 def record():
     if request.method == "POST":
         # Retrieve form data
@@ -26,9 +25,14 @@ def record():
         prepTime = request.form['prepTime']
         cookTime = request.form['cookTime']
         servings = request.form['servings']
-        # Generate unique ID for each record
+        feedbackNotes = request.form['feedback']
+        prepNotes = request.form['prepNotes']
+        instruction = request.form['instruction']
+
+        # Generate unique ID for each recipe, version control using date creation
         unique_id = str(uuid.uuid4())
         version = unique_id + "#" + str(date.today())
+
         # Log form data
         logger.info(f"Form Data - ID: {unique_id}, Recipe Name: {recipeName}, Prep Time: {prepTime}, Cook Time: {cookTime}, Servings: {servings}")
         error = None
@@ -49,7 +53,7 @@ def record():
         else:
             db = get_db()
             db.execute(
-                "INSERT INTO recipes (id, version, name, prepTime, cookTime, servings) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO recipes (id, parent_id, child_id, name, prepTime, cookTime, servings) VALUES (?, ?, ?, ?, ?, ?)",
                 (unique_id, version, recipeName, prepTime, cookTime, servings),
             )
             db.commit()
