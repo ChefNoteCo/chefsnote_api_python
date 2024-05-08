@@ -78,7 +78,7 @@ def all_recipes():
     return jsonify(recipes=recipe_json)
 
 #Record a new version of the existing recipes  
-@bp.route('/versionrecord', methods=('POST',))
+@bp.route('/version_record', methods=('POST',))
 def version_record():
     data = request.json
     id = data.get('id')
@@ -111,7 +111,7 @@ def version_record():
         "INSERT INTO recipes (id, parent_id, child_id, recipe_name, prepTime, cookTime, servings, feedback_notes, prep_notes, instruction) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",(recipeVersionID, id, recipeVersionID, recipeName, prepTime, cookTime, servings, feedbackNotes, prepNotes, instruction),
             )
     db.commit()
- 
+    
 
    
     return jsonify({'message': 'New version of the recipe added successfully'}), 201
