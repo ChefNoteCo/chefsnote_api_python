@@ -15,7 +15,9 @@ CREATE TABLE recipes (
   servings INTEGER NOT NULL DEFAULT 0,
   feedback_notes TEXT,
   prep_notes TEXT,
-  instruction TEXT
+  instruction TEXT,
+  recipe_id TEXT,
+  FOREIGN KEY (recipe_id) REFERENCES recipe_ingredients(id)
 );
 
 CREATE TABLE recipe_ingredients (
