@@ -111,7 +111,29 @@ def version_record():
         "INSERT INTO recipes (id, parent_id, child_id, recipe_name, prepTime, cookTime, servings, feedback_notes, prep_notes, instruction) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",(recipeVersionID, id, recipeVersionID, recipeName, prepTime, cookTime, servings, feedbackNotes, prepNotes, instruction),
             )
     db.commit()
-    
-
-   
     return jsonify({'message': 'New version of the recipe added successfully'}), 201
+
+# Get a single recipe
+@bp.route('/recipe/<string:recipe_id>',method=('GET',))    
+def single_recipe(recipe_id):
+    db = get_db()
+    recipe = db.execute(
+        'SELECT * FROM recipes WHERE WHERE id =?',(recipe_id,)).fetchone()
+
+    if recipe is None:
+        return jsonify({"error": "Recipe not found"}), 404
+    
+    recipe_json = {
+        'id': recipe['id'],
+        'recipe_name': recipe['recipe_name'],
+        'prepTime': recipe['prepTime'],
+        'cookTime': recipe['cookTime'],
+        'servings': recipe['servings'],
+        'feedback_notes': recipe['feedback_notes'],
+        'prep_notes': recipe['prep_notes'],
+        'instruction': recipe['instruction']
+    }
+
+    return jsonify(recipe_json)
+   
+    
