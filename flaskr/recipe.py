@@ -129,7 +129,7 @@ def version_record():
     return jsonify({'message': 'New version of the recipe added successfully'}), 201
 
 # Get a single recipe
-@bp.route('/recipe/<string:recipe_id>',method=('GET','PUT'))    
+@bp.route('/recipe/<string:recipe_id>',methods=('GET','PUT'))    
 def single_recipe(recipe_id):
     try:
         logger.info(f"Fetching recipe details for recipe ID: {recipe_id}")
