@@ -1,5 +1,4 @@
-DROP TABLE IF EXISTS user;
-DROP TABLE IF EXISTS post;
+
 DROP TABLE IF EXISTS recipes;
 DROP TABLE IF EXISTS recipe_ingredients;
 DROP TABLE IF EXISTS ingredient;
@@ -16,16 +15,16 @@ CREATE TABLE recipes (
   feedback_notes TEXT,
   prep_notes TEXT,
   instruction TEXT,
-  recipe_id TEXT,
-  FOREIGN KEY (recipe_id) REFERENCES recipe_ingredients(id)
 );
 
 CREATE TABLE recipe_ingredients (
-  id TEXT PRIMARY KEY,
   external_id INTEGER,
   user_id TEXT,
   ingredient_id TEXT,
-  measurement INTEGER DEFAULT 0
+  measurement INTEGER DEFAULT 0,
+  unit TEXT DEFAULT 'g',
+  FOREIGN KEY (recipe_id) REFERENCE recipes(id),
+  FOREIGN KEY (ingredient_id) REFERENCE ingredient(id)
 );
 
 CREATE TABLE ingredient (

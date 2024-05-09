@@ -23,37 +23,41 @@ def record():
     prepTime = data.get('prepTime')
     cookTime = data.get('cookTime')
     servings = data.get('servings')
-    feedbackNotes = data.get('feedbackNotes')
     prepNotes = data.get('prepNotes')
     instruction = data.get('instruction')
     parentId = data.get('parentId')
+    ingredients = data.get('ingredient',[])
+    
     # check if the recipe from form is a newly create recipe
     if id is None:
         recipeVersionID = str(uuid.uuid4()) 
     else:
         recipeVersionID = parentId + "#" + str(date.today())
 
-
-    logger.info(f"Data - ID: {recipeVersionID}, Recipe Name: {recipeName}, Prep Time: {prepTime}, Cook Time: {cookTime}, Servings: {servings}")
-    
     db = get_db()
+    db.execute("BEGIN TRANSACTION")
+        # Insert the new recipe to recipe table
 
-    # Insert the new recipe to recipe table
     db.execute(
-        "INSERT INTO recipes (id, parent_id, child_id, recipe_name, prepTime, cookTime, servings, feedback_notes, prep_notes, instruction) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",(recipeVersionID, recipeVersionID, recipeVersionID, recipeName, prepTime, cookTime, servings, feedbackNotes, prepNotes, instruction),
+        "INSERT INTO recipes (id, parent_id, child_id, recipe_name, prepTime, cookTime, servings, prep_notes, instruction) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",(recipeVersionID, recipeVersionID, recipeVersionID, recipeName, prepTime, cookTime, servings, prepNotes, instruction),
             )
+    
+    
+    # Insert the new recipe to recipe_ingredient table
+    for ingredient in ingredients:
+        ingredientId = ingredient.get('ingredientId')
+        userId = ingredient.get('userId')
+        externalId = ingredient.get('externalId')
+        measurement = ingredient.get('measurement')
+        unit = ingredient.get('unit')
+        db.execute(
+            "INSERT INTO recipe_ingredients (recipe_id, ingredient_id,user_id,external_id, measurement,unit) VALUES (?,?,?,?,?,?,?)", (recipeVersionID, ingredientId, userId, externalId, measurement, unit),)
+    
     db.commit()
-    # Update the child_id of the parent
-    db.execute(
-        "UPDATE recipes set "
-    )
 
-
-   
     return jsonify({'message': 'Recipe added successfully'}), 201
 
-
-#get all recipes
+#Get all recipes
 @bp.route('/allrecipes', methods=('GET',)) 
 def all_recipes():
     db = get_db()
@@ -89,7 +93,8 @@ def version_record():
     feedbackNotes = data.get('feedbackNotes')
     prepNotes = data.get('prepNotes')
     instruction = data.get('instruction')
-    
+    ingredients = data.get('ingredient',[])
+
     # Parse id to create a new version
     try: 
         parseVersionId = id.split('#')[0]
@@ -98,18 +103,28 @@ def version_record():
     
     recipeVersionID = parseVersionId + "#" + str(date.today())
 
-    logger.info(f"Data - ID: {recipeVersionID}, Recipe Name: {recipeName}, Prep Time: {prepTime}, Cook Time: {cookTime}, Servings: {servings}")
-    
     db = get_db()
-       # Update the child_id of the parent
+
+   
+    db.execute("BEGIN TRANSACTION")
+    
+    # Insert the new recipe to recipe table, since this is a version, parent_id is the ID before parse, and id and child_id are the same
     db.execute(
-        "UPDATE recipes SET child_id = ? where id = ?" , (id,id)
+        "INSERT INTO recipes (id, parent_id, child_id, recipe_name, prepTime, cookTime, servings, prep_notes, instruction) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",(recipeVersionID, id, recipeVersionID, recipeName, prepTime, cookTime, servings, prepNotes, instruction),
     )
-    db.commit()
-    # Insert the new recipe to recipe table
-    db.execute(
-        "INSERT INTO recipes (id, parent_id, child_id, recipe_name, prepTime, cookTime, servings, feedback_notes, prep_notes, instruction) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",(recipeVersionID, id, recipeVersionID, recipeName, prepTime, cookTime, servings, feedbackNotes, prepNotes, instruction),
-            )
+    
+    
+    # Insert the new recipe to recipe_ingredient table
+    for ingredient in ingredients:
+        ingredientId = ingredient.get('ingredientId')
+        userId = ingredient.get('userId')
+        externalId = ingredient.get('externalId')
+        measurement = ingredient.get('measurement')
+        unit = ingredient.get('unit')
+        db.execute(
+            "INSERT INTO recipe_ingredients (recipe_id, ingredient_id,user_id,external_id, measurement,unit) VALUES (?,?,?,?,?,?,?)", (recipeVersionID, ingredientId, userId, externalId, measurement, unit),
+        )
+    
     db.commit()
     return jsonify({'message': 'New version of the recipe added successfully'}), 201
 
