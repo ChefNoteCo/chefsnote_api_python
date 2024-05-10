@@ -12,9 +12,9 @@ CREATE TABLE recipes (
   prepTime INTEGER NOT NULL DEFAULT 0,
   cookTime INTEGER NOT NULL DEFAULT 0,
   servings INTEGER NOT NULL DEFAULT 0,
-  feedback_notes TEXT,
-  prep_notes TEXT,
-  instruction TEXT
+  feedback_notes TEXT[],
+  prep_notes TEXT[],
+  instruction TEXT[],
 );
 
 CREATE TABLE ingredient (
