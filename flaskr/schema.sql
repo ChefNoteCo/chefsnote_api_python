@@ -15,6 +15,7 @@ CREATE TABLE recipes (
   feedback_notes TEXT[],
   prep_notes TEXT[],
   instruction TEXT[],
+  latest TEXT 
 );
 
 CREATE TABLE ingredient (
