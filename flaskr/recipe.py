@@ -17,7 +17,7 @@ bp = Blueprint('recipe', __name__, url_prefix='/')
 @bp.route('/recipes', methods=('GET',)) 
 def get_all_recipes():
     db = get_db()
-    recipes = db.execute("SELECT * FROM recipes").fetchall()
+    recipes = db.execute("SELECT * FROM recipes WHERE isLatestVersion=?",('True',)).fetchall()
     
     # Convert the list of recipe dictionaries to a list of JSON objects
     recipe_json = [] 
@@ -29,16 +29,14 @@ def get_all_recipes():
             'prepTime': recipe['prepTime'],
             'cookTime': recipe['cookTime'],
             'servings': recipe['servings'],
-            'servings': recipe['feedback_notes'],
             'prepNote': recipe['prep_notes'],
-            'instruction': recipe['instruction'],
         })
     
     # Return the list of recipes as JSON
     return jsonify(recipes=recipe_json)
 
 # A single recipe
-@bp.route('/recipe/<string:recipe_id>',methods=["GET"])    
+@bp.route('/recipes/<string:recipe_id>',methods=["GET"])    
 def get_single_recipe(recipe_id):
     try:
         logger.info(f"Fetching recipe details for recipe ID: {recipe_id}")
@@ -56,30 +54,43 @@ def get_single_recipe(recipe_id):
         logger.error(f"Error occurred while processing the request: {str(e)}")
         return jsonify({'error': 'An error occurred'}), 500
 
-@bp.route('/recipe/<string:recipe_id>',methods=["PUT"])    
-def get_single_recipe(recipe_id):
+# Add version recipe
+@bp.route('/recipes/<string:recipe_id>',methods=["PUT"])    
+def put_single_recipe(recipe_id):
     try:
         logger.info(f"Fetching recipe details for recipe ID: {recipe_id}")
         db = get_db()
         logger.info('PUT method')
-
+        
         data = request.json
         id = data.get('id')
         recipeName = data.get('recipeName')
         prepTime = data.get('prepTime')
         cookTime = data.get('cookTime')
         servings = data.get('servings')
-        feedbackNotes = data.get('feedbackNotes',[]) 
-        prepNotes = data.get('prepNotes',[])
+        prepNotes = data.get('prepNotes')
+        instruction = data.get('instruction')
         ingredients = data.get('ingredient',[])
+
+        # Parse id to create a new version
+        try: 
+            parseVersionId = id.split('#')[0]
+        except IndexError:
+            parseVersionId = id
         
+        recipeVersionID = parseVersionId + "#" + str(date.today())
+
+        db = get_db()
         db.execute("BEGIN TRANSACTION")
         
         # Insert the new recipe to recipe table, since this is a version, parent_id is the ID before parse, and id and child_id are the same
         db.execute(
-            "INSERT INTO recipes (recipe_name, prepTime, cookTime, servings, prep_notes, feedback_notes) VALUES (?, ?, ?, ?, ?, ?)",(recipeName, prepTime, cookTime, servings, prepNotes, feedbackNotes),
+            "UPDATE recipes SET child_id=?, isLatestVersion=? WHERE id=?",(recipeVersionID, "False", id),
         )
-        
+        db.execute(
+            "INSERT INTO recipes (id, parent_id, child_id, recipe_name, prepTime, cookTime, servings, prep_notes, instruction, isLatestVersion) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (recipeVersionID, id, recipeVersionID, recipeName, prepTime, cookTime, servings, prepNotes, instruction, "True"),
+        )
+
         # Insert the new recipe to recipe_ingredient table
         for ingredient in ingredients:
             ingredientId = ingredient.get('ingredientId')
@@ -87,10 +98,14 @@ def get_single_recipe(recipe_id):
             externalId = ingredient.get('externalId')
             measurement = ingredient.get('measurement')
             unit = ingredient.get('unit')
+
             db.execute(
-                "INSERT INTO recipe_ingredients (recipe_id, ingredient_id,user_id,external_id, measurement,unit) VALUES (?,?,?,?,?,?,?)", (id, ingredientId, userId, externalId, measurement, unit),
+                "INSERT INTO recipe_ingredients (recipe_id, ingredient_id,user_id,external_id, measurement,unit) VALUES (?,?,?,?,?,?)", (recipeVersionID, ingredientId, userId, externalId, measurement, unit),
             )
+        
         db.commit()
+        return jsonify({'message': 'Recipe added successfully'}), 201
+    
     except Exception as e:
         logger.error(f"Error occurred while processing the request: {str(e)}")
         return jsonify({'error': 'An error occurred'}), 500
@@ -106,23 +121,16 @@ def record():
     servings = data.get('servings')
     prepNotes = data.get('prepNotes')
     instruction = data.get('instruction')
-    parentId = data.get('parentId')
     ingredients = data.get('ingredient',[])
-    
-    # check if the recipe from form is a newly create recipe
-    if id is None:
-        recipeVersionID = str(uuid.uuid4()) 
-    else:
-        recipeVersionID = parentId + "#" + str(date.today())
+    recipeVersionID = str(uuid.uuid4()) + "#" + str(date.today())
 
     db = get_db()
     db.execute("BEGIN TRANSACTION")
         # Insert the new recipe to recipe table
 
     db.execute(
-        "INSERT INTO recipes (id, parent_id, child_id, recipe_name, prepTime, cookTime, servings, prep_notes, instruction) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",(recipeVersionID, recipeVersionID, recipeVersionID, recipeName, prepTime, cookTime, servings, prepNotes, instruction),
-            )
-    
+        "INSERT INTO recipes (id, parent_id, child_id, recipe_name, prepTime, cookTime, servings, prep_notes, instruction, isLatestVersion) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",(recipeVersionID, recipeVersionID, recipeVersionID, recipeName, prepTime, cookTime, servings, prepNotes, instruction, 'True'),
+        )
     
     # Insert the new recipe to recipe_ingredient table
     for ingredient in ingredients:
@@ -132,57 +140,11 @@ def record():
         measurement = ingredient.get('measurement')
         unit = ingredient.get('unit')
         db.execute(
-            "INSERT INTO recipe_ingredients (recipe_id, ingredient_id,user_id,external_id, measurement,unit) VALUES (?,?,?,?,?,?,?)", (recipeVersionID, ingredientId, userId, externalId, measurement, unit),)
+            "INSERT INTO recipe_ingredients (recipe_id, ingredient_id,user_id,external_id, measurement,unit) VALUES (?,?,?,?,?,?)", (recipeVersionID, ingredientId, userId, externalId, measurement, unit),)
     
     db.commit()
 
     return jsonify({'message': 'Recipe added successfully'}), 201
-
-
-#Record a new version of the existing recipes  
-@bp.route('/recipes_version', methods=('POST',))
-def version_record():
-    data = request.json
-    id = data.get('id')
-    recipeName = data.get('recipeName')
-    prepTime = data.get('prepTime')
-    cookTime = data.get('cookTime')
-    servings = data.get('servings')
-    feedbackNotes = data.get('feedbackNotes')
-    prepNotes = data.get('prepNotes')
-    instruction = data.get('instruction')
-    ingredients = data.get('ingredient',[])
-
-    # Parse id to create a new version
-    try: 
-        parseVersionId = id.split('#')[0]
-    except IndexError:
-        parseVersionId = id
-    
-    recipeVersionID = parseVersionId + "#" + str(date.today())
-
-    db = get_db()
-    db.execute("BEGIN TRANSACTION")
-    
-    # Insert the new recipe to recipe table, since this is a version, parent_id is the ID before parse, and id and child_id are the same
-    db.execute(
-        "INSERT INTO recipes (id, parent_id, child_id, recipe_name, prepTime, cookTime, servings, prep_notes, instruction) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",(recipeVersionID, id, recipeVersionID, recipeName, prepTime, cookTime, servings, prepNotes, instruction),
-    )
-    
-    
-    # Insert the new recipe to recipe_ingredient table
-    for ingredient in ingredients:
-        ingredientId = ingredient.get('ingredientId')
-        userId = ingredient.get('userId')
-        externalId = ingredient.get('externalId')
-        measurement = ingredient.get('measurement')
-        unit = ingredient.get('unit')
-        db.execute(
-            "INSERT INTO recipe_ingredients (recipe_id, ingredient_id,user_id,external_id, measurement,unit) VALUES (?,?,?,?,?,?,?)", (recipeVersionID, ingredientId, userId, externalId, measurement, unit),
-        )
-    
-    db.commit()
-    return jsonify({'message': 'New version of the recipe added successfully'}), 201
 
 
 # Delete recipe
@@ -203,4 +165,31 @@ def delete_recipe(recipe_id):
         return jsonify({'message':'This recipe has been deleted successfully'})
     except Exception as e:
         logger.error(f"Error occurred while processing the delete: {str(e)}")
+        return jsonify({'error': 'An error occurred'}), 500
+
+
+# Add feedback
+@bp.route('/recipes/<string:recipe_id>',methods=["PATCH"])
+def add_feedback(recipe_id):
+    try:
+        logger.info(f"Fetching recipe details for recipe ID: {recipe_id}")
+        db = get_db()
+        logger.info('Get Feedback method')
+        data = request.json
+        feedback = data.get('feedbackNotes')
+
+        db.execute("BEGIN TRANSACTION")
+        existing_feedback = db.execute(
+            'SELECT feedback_notes FROM recipe WHERE id = ?',(recipe_id,)
+        ).fetchone().split(',')
+        
+        existing_feedback.append(feedback)
+        update_feedback = ",".join(existing_feedback)
+        db.execute(
+            'UPDATE recipes SET feedback_notes = ? WHERE id = ?', (update_feedback,recipe_id)
+        )
+        db.commit()
+        return jsonify({'message':'The new feedback note has been added to the recipe successfully'})
+    except Exception as e:
+        logger.error(f"Error occurred while processing adding feedback: {str(e)}")
         return jsonify({'error': 'An error occurred'}), 500
