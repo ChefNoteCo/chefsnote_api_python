@@ -29,3 +29,8 @@ DELETE /recipes/:id
 
 GET /recipes/:id/feedback_notes
 POST /recipes/:id/feedback_notes
+
+DEBUG=0
+INFO=1
+WARN=2
+ERROR=3
