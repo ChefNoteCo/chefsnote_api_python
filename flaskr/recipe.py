@@ -137,19 +137,25 @@ def record():
         # Insert the new recipe to recipe table
         db.execute(
             "INSERT INTO recipes (id, parent_id, child_id, recipe_name, prepTime, cookTime, servings, prep_notes, instruction, isLatestVersion) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",(recipeVersionID, recipeVersionID, recipeVersionID, recipeName, prepTime, cookTime, servings, prepNotes, instruction, 'True'),
-        )
-    
+        ) 
+        #  Puff: think about how you get the ingredient ID to begin with? let's think about the flow when I add ingredient to the recipe.. get it from internal first then add to external right?
+
         # Insert the new recipe to recipe_ingredient table
         for ingredient in ingredients:
             ingredientId = ingredient.get('ingredientId')
             userId = ingredient.get('userId')
+            ingredientName = ingredient.get('ingredientName')
             externalId = ingredient.get('externalId')
             measurement = ingredient.get('measurement')
             unit = ingredient.get('unit')
 
             db.execute(
-                "INSERT INTO recipe_ingredients (recipe_id, ingredient_id,user_id,external_id, measurement,unit) VALUES (?,?,?,?,?,?)", (recipeVersionID, ingredientId, userId, externalId, measurement, unit),)
-        
+                "INSERT INTO recipe_ingredients (recipe_id, ingredient_id, user_id, external_id, measurement,unit) VALUES (?,?,?,?,?,?)", (recipeVersionID, ingredientId, userId, externalId, measurement, unit),)
+
+            # insert new ingredient to ingredient table
+            
+            db.execute(
+                "INSERT INTO ingredient (id, userID, ingredient_name, unit) VALUES (?,?,?,?)", (ingredientId, userId, ingredientName,unit ))
             db.commit()
 
             return jsonify({'message': 'Recipe added successfully'}), 201
@@ -178,7 +184,6 @@ def delete_recipe(recipe_id):
         logger.error(f"Error occurred while processing the delete: {str(e)}")
         return jsonify({'error': 'An error occurred'}), 500
 
-
 # Add feedback
 @bp.route('/recipes/<string:recipe_id>',methods=["PATCH"])
 def add_feedback(recipe_id):
@@ -201,6 +206,7 @@ def add_feedback(recipe_id):
         )
         db.commit()
         return jsonify({'message':'The new feedback note has been added to the recipe successfully'})
+    
     except Exception as e:
         logger.error(f"Error occurred while processing adding feedback: {str(e)}")
         return jsonify({'error': 'An error occurred'}), 500

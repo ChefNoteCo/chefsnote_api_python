@@ -22,8 +22,7 @@ CREATE TABLE ingredient (
   id TEXT PRIMARY KEY,
   userID INTEGER,
   ingredient_name TEXT NOT NULL,
-  unit TEXT DEFAULT 'g',
-  quantity INTEGER NOT NULL DEFAULT 0
+  unit TEXT DEFAULT 'g'
 );
 
 CREATE TABLE recipe_ingredients (
